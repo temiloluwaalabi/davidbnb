@@ -11,8 +11,8 @@ import { Button } from "../ui/button";
 import Logo from "./Logo";
 import MaxWidthContainer from "./MaxWidthContainer";
 import StayForm from "../forms/StayForm";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { cn, getLocalizedUrl } from "@/lib/utils";
 import { categories } from "@/constants/main";
 import CategoryBox from "./CategoryBox";
 import {
@@ -25,14 +25,64 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
 import FilterModal from "../modals/FilterModal";
-
-const Navbar = () => {
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Separator } from "../ui/separator";
+import Link from "next/link";
+import RegisterModal from "../modals/AuthenticationModal";
+import { dialogAtom, useDialogModalAtom } from "@/lib/atom";
+import { sendOtp } from "@/actions/sms";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { SafeUser } from "@/types";
+import { User } from "@prisma/client";
+import { Logout } from "@/actions/logout";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { signOut, useSession } from "next-auth/react";
+import { useParams, useRouter } from "next/navigation";
+import { Locale, i18n } from "@/i18n.config";
+import { useToast } from "../ui/use-toast";
+interface NavbarProps {
+  user?: SafeUser | null | undefined;
+}
+const Navbar: React.FC<NavbarProps> = ({ user }) => {
+  const session = useSession();
+  const userClient = useCurrentUser();
   const [stays, setStays] = useState(true);
   const [experiences, setExperiences] = useState(false);
   const [open, setOpen] = useState(false);
   const [openDrawer, setOpenDrawer] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const { openLoginModal, setOpenLoginModal } = useDialogModalAtom();
+  const router = useRouter();
+  const params = useParams();
+  const { toast } = useToast();
+  let lang: Locale;
+  // const transCategoriesRef = useRef<Categories | null>(null);
+  if (Array.isArray(params.lang)) {
+    lang = params.lang[0] as Locale;
+  } else {
+    lang = params.lang as Locale;
+  }
+  if (!i18n.locales.includes(lang)) {
+    lang = i18n.defaultLocale;
+  }
+  // useEffect(() => {
+  //   sendOtp();
+  // });
+
+  const handleUserLogout = async () => {
+    try {
+      await signOut({ redirect: false });
+
+      router.push(getLocalizedUrl("/auth/login", lang as Locale));
+      toast({
+        description: "Logged Out successfully!",
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
   return (
-    <nav className="bg-white shadow-sm fixed z-10 w-full pt-3">
+    <nav className="bg-white shadow-sm relative z-10 w-full pt-3">
       <MaxWidthContainer classnames="border-b-[1px]">
         <div className="flex md:hidden items-center gap-4 justify-between">
           <div className="h-[56px] flex-1 rounded-[32px] gap-4 shadow-light-100 items-center flex p-5">
@@ -57,7 +107,7 @@ const Navbar = () => {
             </DrawerContent>
           </Drawer>
         </div>
-        <div className="hidden md:flex flex-col gap-4">
+        <div className="hidden md:flex flex-col gap-4  relative">
           <div className="flex justify-between items-center">
             <Logo />
             <div className="hidden lg:flex">
@@ -96,7 +146,7 @@ const Navbar = () => {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center gap-3 ">
+            <div className="flex items-center gap-3 relative">
               <div className="flex items-center gap-1 mr-2">
                 <Button
                   className="btn-semibold transition-color rounded-full hover:bg-[#f7f7f7] text-[#222222]"
@@ -106,9 +156,126 @@ const Navbar = () => {
                 </Button>
                 <Globe2 className="size-5" />
               </div>
-              <div className="flex items-center gap-5 px-2 py-3 border rounded-3xl">
-                <Menu className="size-5" />
-                <CircleUserRound className="size-5" />
+              <div className="relative">
+                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                  <PopoverTrigger asChild className="cursor-pointer">
+                    <div
+                      className={`flex items-center gap-5 px-2 py-1 border rounded-3xl ${
+                        isPopoverOpen ? "shadow-light-200" : ""
+                      }`}
+                      // onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+                    >
+                      <Menu className="size-5" />
+                      <Avatar className="">
+                        <AvatarFallback className="bg-transparent p-0">
+                          <CircleUserRound className="size-5" />
+                        </AvatarFallback>
+                        {session.data?.user.image && (
+                          <AvatarImage
+                            src={session.data.user.image as string}
+                          />
+                        )}
+                      </Avatar>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="translate-x-[-1.25rem] xl:translate-x-[-4rem] bg-white border-none  mt-2 flex flex-col items-start p-0 py-3 gap-1">
+                    {user ? (
+                      <div className=" w-full">
+                        <div className="flex flex-col gap-1 w-full pt-2">
+                          <Link
+                            className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                            href="/messages"
+                          >
+                            Messages
+                          </Link>
+                          <Link
+                            className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                            href="/notifications"
+                          >
+                            Notifications
+                          </Link>
+                          <Link
+                            className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                            href="/trip"
+                          >
+                            Trips
+                          </Link>
+                          <Link
+                            className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                            href="/wishlist"
+                          >
+                            Wishlist
+                          </Link>
+                        </div>
+                        <Separator />
+                        <div className="flex flex-col gap-1 w-full pt-2">
+                          <Link
+                            className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                            href="/host/homes"
+                          >
+                            Airbnb your home
+                          </Link>
+                          <Link
+                            className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                            href="/account-settings"
+                          >
+                            Account
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <Dialog
+                        open={openLoginModal}
+                        onOpenChange={setOpenLoginModal}
+                      >
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            aria-label="Login"
+                            className="bg-transparent no-focus text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start px-3.5 rounded-none"
+                          >
+                            Log In / Sign Up
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className=" border-none p-0 py-3">
+                          <div className="">
+                            <RegisterModal />
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                    <Separator />
+                    <div className="flex flex-col gap-1 w-full pt-2">
+                      <Link
+                        className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                        href="/giftcards"
+                      >
+                        Giftcards
+                      </Link>
+                      <Link
+                        className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                        href="/host/homes"
+                      >
+                        Airbnb your home
+                      </Link>
+                      <Link
+                        className="bg-transparent text-sm font-normal hover:font-medium transition hover:bg-[#f7f7f7] p-0 w-full flex items-center justify-start py-2 px-3.5 rounded-none"
+                        href="/help"
+                      >
+                        Help Center
+                      </Link>
+                      {user && (
+                        <Button
+                          variant="destructive"
+                          className="cursor-pointer mx-3 mt-3"
+                          onClick={() => Logout()}
+                        >
+                          Log Out
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </div>
@@ -159,8 +326,8 @@ const Navbar = () => {
       <MaxWidthContainer classnames="flex items-center justify-between">
         <Carousel className="w-full md:w-[80%] mmd:w-[84%] lg:w-[85%] xl:w-[90%]">
           <CarouselContent className="-ml-4">
-            {categories.map((category) => (
-              <CarouselItem key={category.label} className="pl-1">
+            {categories.map((category, i) => (
+              <CarouselItem key={`${category.label} - ${i}`} className="pl-1">
                 <CategoryBox
                   label={category.label}
                   icon={category.icon}

@@ -5,7 +5,7 @@ import { FilterScehma } from "@/lib/validations";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "../ui/input";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { DateRange } from "react-day-picker";
@@ -13,15 +13,111 @@ import { addDays, format } from "date-fns";
 import { Calendar } from "../ui/calendar";
 import { Minus, Plus, Search } from "lucide-react";
 import { Separator } from "../ui/separator";
-import Link from "next/link";
 import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
+import { getTranslations } from "@/lib/dictionaries";
+import { useParams } from "next/navigation";
+import { Locale, i18n } from "@/i18n.config";
 
+// Define the structure of the categories object
+// interface Categories {
+//   [key: string]: string;
+// }
+// interface StayFormProps {
+//   lang: Locale;
+//   t: (key: string) => string;
+// }
 const StayForm = () => {
+  const params = useParams();
+  let lang: Locale;
+  // const transCategoriesRef = useRef<Categories | null>(null);
+  if (Array.isArray(params.lang)) {
+    lang = params.lang[0] as Locale;
+  } else {
+    lang = params.lang as Locale;
+  }
+  if (!i18n.locales.includes(lang)) {
+    lang = i18n.defaultLocale;
+  }
   const [destinations, setDestinations] = useState(false);
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(2024, 0, 20),
     to: addDays(new Date(2024, 0, 20), 20),
   });
+
+  // const t = getTranslations(lang)
+  // const getCategoryValue = useCategoryValues();
+
+  // Function to fetch category value and render categories
+  // const renderCategories = (
+  //   fieldName: string,
+  //   categoryName: string
+  // ): string => {
+  //   // Fetch the category value
+  //   const categoryValue = getCategoryValue(fieldName, categoryName);
+
+  //   // Convert Categories object to a string
+  //   const convertCategoriesToString = (categories: Categories): string => {
+  //     return Object.entries(categories)
+  //       .map(([key, value]) => `${key}: ${value}`)
+  //       .join(", ");
+  //   };
+
+  //   // Handle the case when categoryValue is an array
+  //   if (Array.isArray(categoryValue)) {
+  //     return categoryValue.join(", "); // Convert array to string
+  //   }
+
+  //   // Render the category value or convert it to string
+  //   if (typeof categoryValue === "object") {
+  //     return convertCategoriesToString(categoryValue);
+  //   } else {
+  //     return categoryValue;
+  //   }
+  // };
+  // Define the structure of the categories object
+  // interface Categories {
+  //   [key: string]: string;
+  // }
+  // const params = useParams();
+  // let lang: Locale;
+  // const transCategoriesRef = useRef<Categories | null>(null);
+  // if (Array.isArray(params.lang)) {
+  //   lang = params.lang[0] as Locale;
+  // } else {
+  //   lang = params.lang as Locale;
+  // }
+  // if (!i18n.locales.includes(lang)) {
+  //   lang = i18n.defaultLocale;
+  // }
+
+  // const dictionary = useMemo(() => {
+  //   const fetchDictionary = async (lang: Locale) => {
+  //     const { categories } = await getDictionary(lang);
+  //     transCategoriesRef.current = categories; // Assigning categories to transCategories
+  //     console.log(transCategoriesRef.current);
+  //     return categories;
+  //   };
+
+  //   return fetchDictionary;
+  // }, []);
+
+  // useEffect(() => {
+  //   dictionary(lang);
+  // }, [dictionary, lang]);
+
+  // // Create a custom hook to handle retrieval of category values
+  // const useCategoryValue = () => {
+  //   // Function to get the value of a specific category
+  //   const getCategoryValue = (categoryName: string) => {
+  //     return transCategoriesRef.current
+  //       ? transCategoriesRef.current[categoryName]
+  //       : "";
+  //   };
+
+  //   return getCategoryValue;
+  // };
+  // const getCategoryValue = useCategoryValue();
+
   const form = useForm<z.infer<typeof FilterScehma>>({
     resolver: zodResolver(FilterScehma),
   });

@@ -33,6 +33,7 @@ const config = {
           foreground: "hsl(var(--secondary-foreground))",
           text: "#717171",
           textBlack: "#222222",
+          borderB: "#EBEBEB",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -66,6 +67,7 @@ const config = {
       boxShadow: {
         "light-100":
           "0 3px 12px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.08)",
+        "light-200": "0 2px 4px rgba(0, 0, 0, 0.18)",
         box: "0 3px 12px 0 rgb(0 0 0/0.15)",
       },
       borderRadius: {
@@ -82,10 +84,15 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "caret-blink": {
+          "0%,70%,100%": { opacity: "1" },
+          "20%,50%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "caret-blink": "caret-blink 1.25s ease-out infinite",
       },
     },
   },
