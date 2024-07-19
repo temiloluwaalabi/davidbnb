@@ -38,7 +38,6 @@ export const sendVerificationEmail = async (
     };
   }
 };
-
 export const sendPasswordResetToken = async (
   email: string,
   token: string,
