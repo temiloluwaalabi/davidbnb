@@ -1,5 +1,6 @@
 import NextAuth, { DefaultSession } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { Adapter } from "@auth/core/adapters";
 import { db } from "./lib/db";
 import authConfig from "./auth.config";
 import { getAccountByUserId, getUserById } from "./actions/user.actions";
@@ -22,34 +23,42 @@ export const {
   auth,
   signIn,
   signOut,
+  unstable_update: update,
 } = NextAuth({
+  adapter: PrismaAdapter(db) as unknown as Adapter,
   pages: {
     signIn: "/auth/login",
     error: "/auth/error",
   },
   events: {
     async linkAccount({ user }) {
-      await db.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          emailVerified: new Date(),
-        },
-      });
+      try {
+        await db.user.update({
+          where: { id: user.id },
+          data: { emailVerified: new Date() },
+        });
+      } catch (error) {
+        console.error("Error linking account:", error);
+      }
     },
   },
   callbacks: {
     async signIn({ user, account }) {
-      // console.log({ user, account });
+      try {
+        // Allow OAuth sign-ins
+        if (account?.provider !== "credentials") return true;
 
-      // allow OAuth
-      if (account?.provider !== "credentials") return true;
+        const existingUser = await getUserById(user.id!);
 
-      const existingUser = await getUserById(user.id!);
-      // if (!existingUser?.emailVerified) return false;
+        // Add custom validation logic if needed, such as email verification
+        // Example: Reject if email is not verified
+        // if (!existingUser?.emailVerified) return false;
 
-      return true;
+        return !!existingUser; // Only allow sign-in if the user exists
+      } catch (error) {
+        console.error("Error during sign-in callback:", error);
+        return false; // Deny sign-in on error
+      }
     },
 
     async session({ token, session }) {
@@ -85,32 +94,45 @@ export const {
       return session;
     },
 
-    async jwt({ token }) {
-      if (!token.sub) return token;
+    async jwt({ token, trigger, session }) {
+      // if (!token.sub) return token;
 
-      const existingUser = await getUserById(token.sub);
-      if (!existingUser) return token;
+      try {
+        // Update JWT when session is updated
+        if (trigger === "update" && session) {
+          token.name = session.user.name;
+          token.email = session.user.email;
+          token.phone = session.user.phone;
+          token.role = session.user.role;
+          token.isTwoFactorEnabled = session.user.isTwoFactorEnabled;
+          token.isOAuth = session.user.isOAuth;
+        }
 
-      const existingAccount = await getAccountByUserId(existingUser.id);
-      // Check if existingAccount is not null or undefined
-      if (existingAccount !== null && existingAccount !== undefined) {
-        token.isOAuth = true;
-      } else {
-        token.isOAuth = false;
+        // Populate token with user data on creation
+        if (!token.sub) return token;
+
+        const existingUser = await getUserById(token.sub);
+        if (!existingUser) return token;
+
+        const existingAccount = await getAccountByUserId(existingUser.id);
+
+        token.isOAuth = !!existingAccount;
+        token.name = existingUser.firstName;
+        token.email = existingUser.email;
+        token.phone = existingUser.phoneNumber;
+        token.role = existingUser.role;
+        token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
+
+        return token;
+      } catch (error) {
+        console.error("Error during JWT callback:", error);
+        return token;
       }
-      token.name = existingUser?.firstName;
-      token.email = existingUser?.email;
-      token.phone = existingUser?.phoneNumber;
-
-      token.role = existingUser.role;
-      token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
-      return token;
     },
     authorized: () => {
       return true;
     },
   },
-  adapter: PrismaAdapter(db),
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: 3 * 24 * 60 * 60 },
   ...authConfig,
 });

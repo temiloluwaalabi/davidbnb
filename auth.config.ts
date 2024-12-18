@@ -8,14 +8,8 @@ import { EmailLoginSchema, PhoneSchema } from "./lib/validations";
 import { getUserByEmail, getUserByPhone } from "@/actions/user.actions";
 export default {
   providers: [
-    Github({
-      clientId: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    }),
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
+    Github,
+    Google,
     Credentials({
       async authorize(credentials) {
         const validatedFields = EmailLoginSchema.safeParse(credentials);

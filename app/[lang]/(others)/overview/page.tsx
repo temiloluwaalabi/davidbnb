@@ -4,15 +4,11 @@ import { Locale } from "@/i18n.config";
 import { currentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/dictionaries";
 import React from "react";
+type Params = Promise<{ lang: Locale }>;
 
-const page = async ({
-  params: { lang },
-}: {
-  params: {
-    lang: Locale;
-  };
-}) => {
-  const { categories } = await getDictionary(lang);
+const page = async (props: { params: Params }) => {
+  const params = await props.params;
+  const { categories } = await getDictionary(params.lang);
   const user = await currentUser();
 
   return (

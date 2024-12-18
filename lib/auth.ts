@@ -1,3 +1,4 @@
+"use server";
 import { auth } from "@/auth";
 import { db } from "./db";
 import { useSession } from "next-auth/react";
@@ -28,9 +29,13 @@ export const currentUser = async () => {
 };
 
 export const currentRole = async () => {
-  const session = await auth();
-
-  return session?.user?.role;
+  try {
+    const session = await auth();
+    return session?.user?.role ?? null; // Return the role or null if not found
+  } catch (error: unknown) {
+    console.error("Error fetching current role:", error);
+    return null;
+  }
 };
 
 export const generatePhoneOTPToken = async (phone: string) => {};
